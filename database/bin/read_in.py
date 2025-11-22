@@ -50,7 +50,7 @@ def read_initial_cg_pdb(test=False):
                         add_to_cg_database(line_sep, count, residue_list)
     for key in g_var.cg_residues:
         if len(g_var.cg_residues[key]) == 0:
-            raise ValueError('there is a issue with the residue type: '+key)
+            raise ValueError('There is a issue with the residue type: '+key)
     for key in g_var.cg_residues:
         g_var.cg_chain_id[key] = []
         for residue in g_var.cg_residues[key]:
@@ -219,7 +219,7 @@ def read_in_atomistic(protein):
 #### reset location and check if pdb exists  
     # os.chdir(g_var.start_dir)
     if not os.path.exists(protein):
-        sys.exit('cannot find atomistic protein : '+protein)
+        raise Exception('Cannot find atomistic protein : '+protein)
 #### read in atomistic fragments into dictionary residue_list[0]=x,y,z,atom_name    
     atomistic_protein_input={}
     if g_var.input_directory in protein:

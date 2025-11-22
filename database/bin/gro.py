@@ -14,7 +14,7 @@ def collect_input():
     if os.path.exists(g_var.args.c):
         print('You have selected the following coarse grain input file: ', g_var.args.c)
     else:
-        sys.exit('Cannot find CG input file: '+g_var.args.c)
+        raise Exception('Cannot find CG input file: '+g_var.args.c)
     gen.mkdir_directory(g_var.working_dir)
     gen.mkdir_directory(g_var.final_dir)
     gen.mkdir_directory(g_var.input_directory)
@@ -42,7 +42,7 @@ def collect_input():
         gromacs([g_var.args.gmx+' -version', 'version.txt'])
     gromacs([g_var.args.gmx+' editconf -f '+gen.path_leaf(g_var.args.c)[1]+' -resnr 0 -o '+g_var.input_directory+'CG_INPUT.pdb', g_var.input_directory+'CG_INPUT.pdb'])
     if not os.path.exists(g_var.input_directory+'CG_INPUT.pdb'):
-        sys.exit('\nFailed to process coarsegrain input file')      
+        raise Exception('\nFailed to process coarsegrain input file')      
 
 #### gromacs parser
 def gromacs(gro):
@@ -50,34 +50,34 @@ def gromacs(gro):
                         'but did not reach the requested Fmax ', 'Segmentation fault', 'Fatal error:', 'Cannot read from input', 'threads is only supported with thread-MPI']
     cmd,output = gro[0], gro[1]
     error = False
-    if os.path.exists(output):
-        pass
-    else:
+    # if os.path.exists(output):
+    #     pass
+    # else:
     #### if the flag gromacs is used every gromacs command will be printed to the terminal 
-        if g_var.args.v >= 3:
-            print('\nrunning gromacs: \n '+cmd+'\n')
-        output = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        err, out = output.communicate()
-        out=out.decode("utf-8")
-        if not hasattr(g_var, 'gmx_version'):
-            check_gromacs_version(out, err)
-    #### all gromacs outputs will be saved into gromacs_outputs within the folder it is run
-        with open('gromacs_outputs', 'a') as checks:
-            checks.write(out)
-    #### standard catch for failed gromacs commands
-            for err in possible_errors:
-                if err in out:
-                    print('\n\nThere was an error with the following command:\n'+cmd+'\nThe exact error can be read in: '+os.getcwd()+'/gromacs_outputs\n')
-                    if 'residue naming needs to be fixed' in out and 'PROTEIN_aligned' in out:
-                        print('\n\n###  The supplied protein structure contains incorrectly named or missing atoms  ###\n\n')
-                    error = True
+    if g_var.args.v >= 3:
+        print('\nrunning gromacs: \n '+cmd+'\n')
+    output = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    err, out = output.communicate()
+    out=out.decode("utf-8")
+    if not hasattr(g_var, 'gmx_version'):
+        check_gromacs_version(out, err)
+#### all gromacs outputs will be saved into gromacs_outputs within the folder it is run
+    with open('gromacs_outputs', 'a') as checks:
+        checks.write(out)
+#### standard catch for failed gromacs commands
+        for err in possible_errors:
+            if err in out:
+                if 'residue naming needs to be fixed' in out and 'PROTEIN_aligned' in out:
+                    raise Exception('\n\n###  The supplied protein structure contains incorrectly named or missing atoms  ###\n\n')
+                raise Exception('\n\nThere was an error with the following command:\n'+cmd+'\nThe exact error can be read in: '+os.getcwd()+'/gromacs_outputs\n')
+                error = True
 #                if err == 'threads is only supported with thread-MPI':
 #                    g_var.ntmpi = False
-            if 'number of atoms in the topology (' in out:
-                print('\n'+out+'\n\n')
-                print('{0:^90}\n\n{1:^90}\n'.format('***NOTE***','If it is only out by multiples of two, check cysteine distances and increase -cys cutoff'))
-                print('{0:^90}\n\n'.format('A lot of Martini v2-2 disulphide bonds can be up to 10 A (current search cutoff is '+str(g_var.args.cys)+' A)')) 
-                error = True
+        if 'number of atoms in the topology (' in out:
+            print('\n'+out+'\n\n')
+            print('{0:^90}\n\n{1:^90}\n'.format('***NOTE***','If it is only out by multiples of two, check cysteine distances and increase -cys cutoff'))
+            print('{0:^90}\n\n'.format('A lot of Martini v2-2 disulphide bonds can be up to 10 A (current search cutoff is '+str(g_var.args.cys)+' A)')) 
+            error = True
     if len(gro) == 4: 
         gro[3].put(gro[2])
         return gro[2], error 
@@ -111,13 +111,15 @@ def pdb2gmx_minimise(chain,pdb2gmx_selections,res_type, q):
     # if res_type == 'RNA':
     #     minimise_rna_chain(chain, 'de_novo_', res_type)
     # else:
-    if not os.path.exists(res_type+'_de_novo_'+str(chain)+'_gmx.pdb'):
-        if res_type == 'RNA' or res_type == 'OTHER':
-            pdb2gmx_chain(chain, 'de_novo_', res_type, ' << EOF \n1\n5\n4'+str(pdb2gmx_selections[chain][0])+'\n'+str(pdb2gmx_selections[chain][1]))
-        else:
-            pdb2gmx_chain(chain, 'de_novo_', res_type, ' << EOF \n1\n'+str(pdb2gmx_selections[chain][0])+'\n'+str(pdb2gmx_selections[chain][1]))
-    if not os.path.exists(res_type+'_de_novo_'+str(chain)+'_gmx_checked.pdb'):
-        at_mod.check_overlap_chain(chain, 'de_novo_', res_type)
+    # if not os.path.exists(res_type+'_de_novo_'+str(chain)+'_gmx.pdb'):
+    if res_type == 'RNA' or res_type == 'OTHER':
+        pdb2gmx_chain(chain, 'de_novo_', res_type, ' << EOF \n1\n5\n4'+str(pdb2gmx_selections[chain][0])+'\n'+str(pdb2gmx_selections[chain][1]))
+    else:
+        pdb2gmx_chain(chain, 'de_novo_', res_type, ' << EOF \n1\n'+str(pdb2gmx_selections[chain][0])+'\n'+str(pdb2gmx_selections[chain][1]))
+
+    # if not os.path.exists(res_type+'_de_novo_'+str(chain)+'_gmx_checked.pdb'):
+    at_mod.check_overlap_chain(chain, 'de_novo_', res_type)
+
     if g_var.user_at_input and not os.path.exists(res_type+'_aligned_'+str(chain)+'_gmx_checked.pdb') and res_type == 'PROTEIN':
         pdb2gmx_selections[chain] = histidine_protonation(chain, 'de_novo_', pdb2gmx_selections[chain])
         pdb2gmx_chain(chain, 'aligned_', res_type, pdb2gmx_selections[chain])
@@ -289,38 +291,38 @@ def convert_topology(topol, protein_number, res_type):
     if os.path.exists(topol+str(protein_number)+'.top'):
         read=False
         mol_type=False
-        if not os.path.exists(topol+str(protein_number)+'.itp'):
-            with open(topol+str(protein_number)+'.itp', 'w') as itp_write:
+        # if not os.path.exists(topol+str(protein_number)+'.itp'):
+        with open(topol+str(protein_number)+'.itp', 'w') as itp_write:
 
-                for line in open(topol+str(protein_number)+'.top', 'r').readlines():
+            for line in open(topol+str(protein_number)+'.top', 'r').readlines():
+                # print(line)
+            #### copies between moleculetype and position restraint section
+                if len(line.split()) > 1: 
+                    if read == False and line.split()[1] == 'moleculetype':
+                        read = True
+                    if line.split()[0]== '[' and line.split()[1] == 'moleculetype' and read:
+                        mol_type = True
+                    elif line.split()[0]== '[' and line.split()[1] == 'atoms' and read:
+                        mol_type = False
+                    elif mol_type:
+                        if not line.startswith(';'):
+                            line = '{0}       {1:20}'.format(res_type.lower()+'_'+str(protein_number), line.split()[1])
+                    if read == True and line.split()[1] == 'POSRES':
+                        read = False
+            #### writes to itp file copied section          
+                if read:
                     # print(line)
-                #### copies between moleculetype and position restraint section
-                    if len(line.split()) > 1: 
-                        if read == False and line.split()[1] == 'moleculetype':
-                            read = True
-                        if line.split()[0]== '[' and line.split()[1] == 'moleculetype' and read:
-                            mol_type = True
-                        elif line.split()[0]== '[' and line.split()[1] == 'atoms' and read:
-                            mol_type = False
-                        elif mol_type:
-                            if not line.startswith(';'):
-                                line = '{0}       {1:20}'.format(res_type.lower()+'_'+str(protein_number), line.split()[1])
-                        if read == True and line.split()[1] == 'POSRES':
-                            read = False
-                #### writes to itp file copied section          
-                    if read:
-                        # print(line)
-                        itp_write.write(line)
-                if res_type in ['PROTEIN']:
-                #### adds position restraint section to end of itp file         
-                    itp_write.write('#ifdef POSRES\n#include \"'+res_type+'_'+str(protein_number)+'_posre.itp\"\n#endif\n') 
-                    itp_write.write('#ifdef POSRESCA\n#include \"'+res_type+'_'+str(protein_number)+'_ca_posre.itp\"\n#endif\n') 
-                    itp_write.write('#ifdef VERY_LOWPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_very_low_posre.itp\"\n#endif\n')
-                    itp_write.write('#ifdef LOWPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_low_posre.itp\"\n#endif\n')
-                    itp_write.write('#ifdef MIDPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_mid_posre.itp\"\n#endif\n')
-                    itp_write.write('#ifdef HIGHPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_high_posre.itp\"\n#endif\n')
-                    itp_write.write('#ifdef VERY_HIGHPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_very_high_posre.itp\"\n#endif\n')
-                    itp_write.write('#ifdef ULTRAPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_ultra_posre.itp\"\n#endif\n')
+                    itp_write.write(line)
+            if res_type in ['PROTEIN']:
+            #### adds position restraint section to end of itp file         
+                itp_write.write('#ifdef POSRES\n#include \"'+res_type+'_'+str(protein_number)+'_posre.itp\"\n#endif\n') 
+                itp_write.write('#ifdef POSRESCA\n#include \"'+res_type+'_'+str(protein_number)+'_ca_posre.itp\"\n#endif\n') 
+                itp_write.write('#ifdef VERY_LOWPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_very_low_posre.itp\"\n#endif\n')
+                itp_write.write('#ifdef LOWPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_low_posre.itp\"\n#endif\n')
+                itp_write.write('#ifdef MIDPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_mid_posre.itp\"\n#endif\n')
+                itp_write.write('#ifdef HIGHPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_high_posre.itp\"\n#endif\n')
+                itp_write.write('#ifdef VERY_HIGHPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_very_high_posre.itp\"\n#endif\n')
+                itp_write.write('#ifdef ULTRAPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_ultra_posre.itp\"\n#endif\n')
     else:
         sys.exit('cannot find : '+topol+'_'+str(protein_number)+'.top')
 
@@ -447,7 +449,8 @@ def write_merged_topol():
                     if residue_type in ['PROTEIN']:
                         for posres_type in ['_very_low_posre.itp','_low_posre.itp','_mid_posre.itp','_high_posre.itp','_very_high_posre.itp','_ultra_posre.itp','_ca_posre.itp','_posre.itp']:
                             gen.file_copy_and_check(g_var.working_dir+'PROTEIN/PROTEIN_'+str(unit)+posres_type, 'PROTEIN_'+str(unit)+posres_type)
-                        gen.file_copy_and_check(g_var.working_dir+'PROTEIN/PROTEIN_disres.itp', 'PROTEIN_disres.itp')  
+                        if os.path.exists(g_var.working_dir+'PROTEIN/PROTEIN_disres.itp'):
+                            gen.file_copy_and_check(g_var.working_dir+'PROTEIN/PROTEIN_disres.itp', 'PROTEIN_disres.itp')  
         if os.path.exists('extra_atomtypes.itp'):
             topol_write.write('; Include forcefield parameters\n#include \"'+g_var.final_dir+g_var.forcefield+'/forcefield.itp\"\n')
             topol_write.write('#include \"extra_atomtypes.itp\"\n')
@@ -496,13 +499,13 @@ def minimise_merged_pdbs(protein):
 
    
 def write_steered_mdp(loc, posres, time, timestep):
-    if not os.path.exists(loc):
-        with open(loc, 'w') as steered_md:
-            steered_md.write('define = '+posres+'\nintegrator = md\nnsteps = '+str(time)+'\ndt = '+str(timestep)+'\ncontinuation   = no\nconstraint_algorithm = lincs\n')
-            steered_md.write('nstxout-compressed = 1000\nnstenergy = 1000\nconstraints = h-bonds\nnstlist = 25\nrlist = 1.2\nrcoulomb = 1.2\nrvdw = 1.2\ncoulombtype  = PME\n')
-            steered_md.write('pme_order = 4\nfourierspacing = 0.135\ntcoupl = v-rescale\ntc-grps = system\ntau_t = 0.1\nref_t = 310\npcoupl = no\n')
-            steered_md.write('pbc = xyz\nDispCorr = no\ngen_vel = no\nrefcoord_scaling = all\ncutoff-scheme = Verlet\n')
-            steered_md.write('disre=simple\ndisre-weighting=equal\ndisre-fc=1000\ndisre-tau=1\nnstdisreout=1\n')   
+    # if not os.path.exists(loc):
+    with open(loc, 'w') as steered_md:
+        steered_md.write('define = '+posres+'\nintegrator = md\nnsteps = '+str(time)+'\ndt = '+str(timestep)+'\ncontinuation   = no\nconstraint_algorithm = lincs\n')
+        steered_md.write('nstxout-compressed = 1000\nnstenergy = 1000\nconstraints = h-bonds\nnstlist = 25\nrlist = 1.2\nrcoulomb = 1.2\nrvdw = 1.2\ncoulombtype  = PME\n')
+        steered_md.write('pme_order = 4\nfourierspacing = 0.135\ntcoupl = v-rescale\ntc-grps = system\ntau_t = 0.1\nref_t = 310\npcoupl = no\n')
+        steered_md.write('pbc = xyz\nDispCorr = no\ngen_vel = no\nrefcoord_scaling = all\ncutoff-scheme = Verlet\n')
+        steered_md.write('disre=simple\ndisre-weighting=equal\ndisre-fc=1000\ndisre-tau=1\nnstdisreout=1\n')   
 
 def steer_to_aligned(protein_type, fc, input_file ):
     gen.mkdir_directory(g_var.merged_directory+'STEER')
@@ -582,20 +585,20 @@ def print_rmsd(rmsd):
 
 def run_steer(steer, initial):
     for res_val, restraint in enumerate(steer):
-        if not os.path.exists(g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+restraint+'pdb'):
-            if res_val == 0:
-                equil = steer_to_aligned('aligned', restraint, initial)
+        # if not os.path.exists(g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+restraint+'pdb'):
+        if res_val == 0:
+            equil = steer_to_aligned('aligned', restraint, initial)
+        else:
+            equil = steer_to_aligned('aligned', restraint, g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+steer[res_val-1])
+        if equil:
+            print('Steering to aligned failed at: '+restraint)
+            if len(steer) > 5:
+                print('Your aligned structure may be too far from the CG input')
+                print('The closest the script can get, is found in the FINAL directory')
+                return g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+steer[res_val]+'.pdb'
             else:
-                equil = steer_to_aligned('aligned', restraint, g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+steer[res_val-1])
-            if equil:
-                print('Steering to aligned failed at: '+restraint)
-                if len(steer) > 5:
-                    print('Your aligned structure may be too far from the CG input')
-                    print('The closest the script can get, is found in the FINAL directory')
-                    return g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+steer[res_val]+'.pdb'
-                else:
-                    print('Your aligned structure may be quite far from the CG input')
-                    print('Restarting with gentler restraints')
-                    rmtree(g_var.merged_directory+'STEER')
-                    return False 
+                print('Your aligned structure may be quite far from the CG input')
+                print('Restarting with gentler restraints')
+                rmtree(g_var.merged_directory+'STEER')
+                return False 
     return g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+steer[-1]+'.pdb'

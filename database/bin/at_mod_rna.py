@@ -6,11 +6,6 @@ import g_var, gen
 import numpy as np
 import math
 
-# exclude_atoms_ter_5 = ["P", "O1P", "O2P", "H3T", "H5T", ]
-# exclude_atoms_ter_3 = ["H5T"]
-# exclude_atoms = ["H3T", "H5T"]
-# exclude_atoms_ter_5 = ["H5'1", "H5'2", "H2'1", "H2'2", "H3T", "H5T",]
-# exclude_atoms_ter_3 = ["H5'1", "H5T", "H5'2", "H2'1", "H2'2", "H3T"]
 exclude_atoms = ["H5'1", "H5T", "H5'2", "H2'1", "H2'2", "H3T"]
 def build_multi_residue_atomistic_system(cg_residues, sys_type, mapping):
     chain_count=1
@@ -22,8 +17,6 @@ def build_multi_residue_atomistic_system(cg_residues, sys_type, mapping):
     out = []
     cg_residue_last = None
     for cg_residue_id, cg_residue in cg_residues[sys_type].items():
-        # if np.round((cg_residue_id/len(cg_residues[sys_type]))*100,2).is_integer():
-        #     print('Converting de_novo '+sys_type+': ',np.round((cg_residue_id/len(cg_residues[sys_type]))*100,2),'%', end='\r')
         resname = cg_residue[next(iter(cg_residue))]['residue_name']
         chain_id = cg_residue[next(iter(cg_residue))]['chain_id']
         if cg_residue_last is not None:
@@ -44,18 +37,11 @@ def build_multi_residue_atomistic_system(cg_residues, sys_type, mapping):
             chain_now = chain_id
             g_var.ter_res[sys_type][chain_count-1]=[resname, False]
         elif chain_now != chain_id:
-            # o_new = []
-            # for atom in out[-1]:
-            #     if atom[0] not in exclude_atoms:
-            #         o_new.append(atom)
-            # out[-1] = o_new
             out_new = []
             for o in out:
                 out_new.extend(o)
             out = out_new
             g_var.ter_res[sys_type][chain_count-1][1]=ter
-            # chain_break = breaks(out)
-            # import pdb; pdb.set_trace()
             write_pdb(out, chain_count-1, sys_type)
             out = []
             chain_count += 1
@@ -64,7 +50,6 @@ def build_multi_residue_atomistic_system(cg_residues, sys_type, mapping):
             g_var.ter_res[sys_type][chain_count-1]=[resname, False]
         g_var.seq_cg[sys_type] = add_to_sequence(g_var.seq_cg[sys_type], resname, chain_count)
         residue = [(bead, resi['residue_name'], cg_residue_id, chain_id, float(resi['coord'][0]), float(resi['coord'][1]), float(resi['coord'][2])) for bead, resi in cg_residue.items()]
-        # residue = [(bead, resi['residue_name'], cg_residue_id, chain_id, float(resi['coord'][0])/10, float(resi['coord'][1])/10, float(resi['coord'][2])/10) for bead, resi in cg_residue.items()]
         o, r = mapping[resname].do(residue)
         o_new = []
         for atom in o:

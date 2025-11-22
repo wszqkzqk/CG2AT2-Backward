@@ -366,7 +366,7 @@ def merge_indivdual_chain_pdbs(file, end, res_type):
             with open(file+'_'+str(chain)+end, 'r') as pdb_input:
                 merge_temp += read_in.filter_input(pdb_input.readlines(), False)
         else:
-            sys.exit('cannot find chain: '+file+'_'+str(chain)+end)
+            raise Exception('Cannot find chain: '+file+'_'+str(chain)+end)
         if res_type+'_aligned' in file:  
             count, restraint_count = at_mod_p.create_disres(merge_temp, chain, file, count, restraint_count)
         merge, merge_coords = fix_chirality(merge,merge_temp,merged_coords, res_type)   
@@ -555,13 +555,13 @@ def read_in_merged_pdbs(merge, merge_coords, location):
         raise ValueError('cannot find minimised residue: \n'+ location) 
 
 def check_overlap_chain(chain, input,res_type):
-    if not os.path.exists(g_var.working_dir+res_type+'/'+res_type+'_'+input+str(chain)+'_gmx_checked.pdb'):
-        lines, coords = read_in_merged_pdbs([], [], res_type+'_'+input+str(chain)+'_gmx.pdb')
-        if res_type == 'PROTEIN':
-            coords = at_mod_p.correct_amide_h(lines, coords)
+    # if not os.path.exists(g_var.working_dir+res_type+'/'+res_type+'_'+input+str(chain)+'_gmx_checked.pdb'):
+    lines, coords = read_in_merged_pdbs([], [], res_type+'_'+input+str(chain)+'_gmx.pdb')
+    if res_type == 'PROTEIN':
+        coords = at_mod_p.correct_amide_h(lines, coords)
 
-        coords, index_conversion = index_conversion_generate(lines, coords)
-        write_pdb(lines, coords, index_conversion, g_var.working_dir+res_type+'/'+res_type+'_'+input+str(chain)+'_gmx_checked.pdb')
+    coords, index_conversion = index_conversion_generate(lines, coords)
+    write_pdb(lines, coords, index_conversion, g_var.working_dir+res_type+'/'+res_type+'_'+input+str(chain)+'_gmx_checked.pdb')
 
 ## fix chirality errors
 
@@ -692,37 +692,37 @@ def check_hydrogens(residue):
 ## check for threaded lipids
 def check_ringed_lipids(protein):
     print('Checking for ringed lipids')
-    if not os.path.exists(g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb'):
-        if not os.path.exists(g_var.merged_directory+'merged_cg2at_threaded.pdb'):
-            os.chdir(g_var.merged_directory)
-            merge, merge_coords = read_in_merged_pdbs([], [], protein)
-            ringed=False
-            lipid_atoms = []
-            with open(g_var.merged_directory+'threaded_lipids.dat', 'w') as ring_ouput:
-                for at_val, atom in enumerate(merge): 
-                    resname = get_np_resname(at_val)
-                    if resname in g_var.np_residues:
-                        offset = fetch_start_of_residue_np(at_val, resname)
-                        if atom['atom_number']-offset in g_var.heavy_bond[resname]:
-                            for at_bond in g_var.heavy_bond[resname][atom['atom_number']-offset]:
-                                at_bond -=1
-                                if merge[at_bond+offset]['atom_number'] > merge[at_val]['atom_number']:
-                                    merge[at_bond+offset]['x'], merge[at_bond+offset]['y'], merge[at_bond+offset]['z'] = np.array(read_in.brute_mic(merge_coords[at_val],merge_coords[at_bond+offset]))
-                                    merge_coords[at_bond+offset] = merge[at_bond+offset]['x'], merge[at_bond+offset]['y'], merge[at_bond+offset]['z']
-                                    dist = gen.calculate_distance(merge_coords[at_val], merge_coords[at_bond+offset])
-                                    if 2 < dist < 6:
-                                        lipid_atoms.append([at_val, at_bond+offset, (np.array(merge_coords[at_val])+np.array(merge_coords[at_bond+offset]))/2])
-                                        ring_ouput.write('{0:6}{1:6}{2:2}{3:4}{4:2}{5:7}{6:5}{7:5}{8:5}{9:5}{10:5}{11:5}\n'.format(
-                                                            'distance: ',str(np.round(dist,2)),'residue: ', merge[at_val]['residue_name'], merge[at_val]['residue_id'],
-                                                            ' atom_1: ', merge[at_val]['atom_name'],
-                                                            'atom_2: ', merge[at_bond+offset]['atom_name'], 'rough line num: ', at_val, at_bond+offset))
-                                        ringed = True
-        if ringed or os.path.exists(g_var.merged_directory+'merged_cg2at_threaded.pdb'):
-            print('Found '+str(len(lipid_atoms))+' abnormal bonds, now attempting to fix.')
-            print('See this file for a complete list: '+g_var.merged_directory+'threaded_lipids.dat')
-            fix_threaded_lipids(lipid_atoms, merge, merge_coords)
-        else:
-            gen.file_copy_and_check(g_var.merged_directory+'MIN/merged_cg2at_de_novo_minimised.pdb', g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb')
+    # if not os.path.exists(g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb'):
+    # if not os.path.exists(g_var.merged_directory+'merged_cg2at_threaded.pdb'):
+    os.chdir(g_var.merged_directory)
+    merge, merge_coords = read_in_merged_pdbs([], [], protein)
+    ringed=False
+    lipid_atoms = []
+    with open(g_var.merged_directory+'threaded_lipids.dat', 'w') as ring_ouput:
+        for at_val, atom in enumerate(merge): 
+            resname = get_np_resname(at_val)
+            if resname in g_var.np_residues:
+                offset = fetch_start_of_residue_np(at_val, resname)
+                if atom['atom_number']-offset in g_var.heavy_bond[resname]:
+                    for at_bond in g_var.heavy_bond[resname][atom['atom_number']-offset]:
+                        at_bond -=1
+                        if merge[at_bond+offset]['atom_number'] > merge[at_val]['atom_number']:
+                            merge[at_bond+offset]['x'], merge[at_bond+offset]['y'], merge[at_bond+offset]['z'] = np.array(read_in.brute_mic(merge_coords[at_val],merge_coords[at_bond+offset]))
+                            merge_coords[at_bond+offset] = merge[at_bond+offset]['x'], merge[at_bond+offset]['y'], merge[at_bond+offset]['z']
+                            dist = gen.calculate_distance(merge_coords[at_val], merge_coords[at_bond+offset])
+                            if 2 < dist < 6:
+                                lipid_atoms.append([at_val, at_bond+offset, (np.array(merge_coords[at_val])+np.array(merge_coords[at_bond+offset]))/2])
+                                ring_ouput.write('{0:6}{1:6}{2:2}{3:4}{4:2}{5:7}{6:5}{7:5}{8:5}{9:5}{10:5}{11:5}\n'.format(
+                                                    'distance: ',str(np.round(dist,2)),'residue: ', merge[at_val]['residue_name'], merge[at_val]['residue_id'],
+                                                    ' atom_1: ', merge[at_val]['atom_name'],
+                                                    'atom_2: ', merge[at_bond+offset]['atom_name'], 'rough line num: ', at_val, at_bond+offset))
+                                ringed = True
+    if ringed or os.path.exists(g_var.merged_directory+'merged_cg2at_threaded.pdb'):
+        print('Found '+str(len(lipid_atoms))+' abnormal bonds, now attempting to fix.')
+        print('See this file for a complete list: '+g_var.merged_directory+'threaded_lipids.dat')
+        fix_threaded_lipids(lipid_atoms, merge, merge_coords)
+    else:
+        gen.file_copy_and_check(g_var.merged_directory+'MIN/merged_cg2at_de_novo_minimised.pdb', g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb')
 
 def fetch_start_of_residue(at, merge):
     count = at

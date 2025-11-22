@@ -585,7 +585,7 @@ def write_RMSD():
     de_novo_atoms, chain_count = read_in.read_in_atomistic(g_var.final_dir+'final_cg2at_de_novo.pdb') ## reads in final pdb
 
     if chain_count != g_var.system['PROTEIN']:
-        sys.exit('number of chains in atomistic protein input ('+str(chain_count)+') does not match CG representation ('+str(g_var.system['PROTEIN'])+')')
+        raise Exception('number of chains in atomistic protein input ('+str(chain_count)+') does not match CG representation ('+str(g_var.system['PROTEIN'])+')')
     RMSD_de_novo = RMSD_measure_de_novo(de_novo_atoms) ## gets rmsd of de novo
 
     if g_var.user_at_input and 'PROTEIN' in g_var.cg_residues: 

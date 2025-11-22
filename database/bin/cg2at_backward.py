@@ -16,7 +16,7 @@ if __name__ == '__main__':
     ## I've tried to make them as comprehensive as possible but they may need updating occasionally
     g_var.version = 1
 
-    g_var.script_update = '14-09-2022'
+    g_var.script_update = '22-11-2025'
 
     g_var.other = {'DA':'A', 'DG':'G', 'DC':'C', 'DT':'T', 'DAX':'A', 'DGX':'G', 'DCX':'C', 'DTX':'T'}
 
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     
     g_var.tc['i_t']=time.time()
     ### initialise script 
-    gen.cg2at_header()
+    gen.header()
     gen.fetch_forcefield_water_info()
     gen.check_input_flag() #### if missing structure file print help and quit
     gen.correct_number_cpus()
@@ -47,7 +47,6 @@ if __name__ == '__main__':
     gen.fetch_fragment_single()   
     gen.fetch_chain_groups()
     gen.sort_swap_group()
-    print(gen.print_swap_residues())
     ###
     #### collects initial structures into INPUT folder
     gro.collect_input()
@@ -70,6 +69,7 @@ if __name__ == '__main__':
     at_mod.sanity_check()
     ### convert protein to atomistic representation
     g_var.tc['r_i_t']=time.time()
+    
     if 'PROTEIN' in g_var.cg_residues:          
         g_var.coord_atomistic = at_mod_p.build_multi_residue_atomistic_system(g_var.cg_residues, 'PROTEIN') ## converts protein to atomistic
         if not g_var.user_at_input and g_var.args.v >= 1:  ## prints protein sequences 
@@ -91,10 +91,10 @@ if __name__ == '__main__':
         if g_var.user_at_input:
             at_mod_p.align_user_chains(final_coordinates_atomistic_de_novo)
         #### read in minimised de novo protein chains and merges chains
-        if not os.path.exists(g_var.working_dir+'PROTEIN/PROTEIN_de_novo_merged.pdb'):
-            gro.run_parallel_pdb2gmx_min('PROTEIN', g_var.ter_res['PROTEIN'])### runs pdb2gmx and minimises each protein chain
-            print('Merging de_novo protein chains')
-            at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'PROTEIN/MIN/PROTEIN_de_novo', '.pdb', 'PROTEIN') ## merge protein chains
+        # if not os.path.exists(g_var.working_dir+'PROTEIN/PROTEIN_de_novo_merged.pdb'):
+        gro.run_parallel_pdb2gmx_min('PROTEIN', g_var.ter_res['PROTEIN'])### runs pdb2gmx and minimises each protein chain
+        print('Merging de_novo protein chains')
+        at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'PROTEIN/MIN/PROTEIN_de_novo', '.pdb', 'PROTEIN') ## merge protein chains
 
         #### read in aligned protein chains and merges chains
         if g_var.user_at_input and not os.path.exists(g_var.working_dir+'PROTEIN/PROTEIN_aligned_merged.pdb'):
@@ -103,13 +103,15 @@ if __name__ == '__main__':
                 at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'PROTEIN/MIN/PROTEIN_aligned', '.pdb', 'PROTEIN') ## merge aligned chains
             else:
                 at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'PROTEIN/PROTEIN_aligned', '_gmx_checked.pdb', 'PROTEIN')
+    
     ### converts RNA to atomistic
     if 'RNA' in g_var.cg_residues:
+        g_var.tc['r_d_n_t']=time.time()
         mapping=Mapping.get(target=g_var.RNA_ff)
         g_var.coord_atomistic = at_mod_rna.build_multi_residue_atomistic_system(g_var.cg_residues, 'RNA', mapping)
         gro.run_parallel_pdb2gmx_min('RNA', g_var.ter_res['RNA'])
-        if not os.path.exists(g_var.working_dir+'RNA/RNA_de_novo_merged.pdb'):
-            at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'RNA/MIN/RNA_de_novo', '.pdb', 'RNA') ## merge  chains
+        # if not os.path.exists(g_var.working_dir+'RNA/RNA_de_novo_merged.pdb'):
+        at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'RNA/MIN/RNA_de_novo', '.pdb', 'RNA') ## merge  chains
 
     ### converts other linked residues  
     g_var.tc['f_p_t']=time.time()
@@ -119,8 +121,8 @@ if __name__ == '__main__':
             print(gen.print_sequnce_info('OTHER'))   
         fin_at_NP_linked_de_novo = at_mod_p.finalise_novo_atomistic(g_var.other_atomistic, 'OTHER')
         gro.run_parallel_pdb2gmx_min('OTHER', g_var.ter_res['OTHER'])
-        if not os.path.exists(g_var.working_dir+'OTHER/OTHER_de_novo_merged.pdb'):
-            at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'OTHER/MIN/OTHER_de_novo', '.pdb', 'OTHER') ## merge  chains
+        # if not os.path.exists(g_var.working_dir+'OTHER/OTHER_de_novo_merged.pdb'):
+        at_mod.merge_indivdual_chain_pdbs(g_var.working_dir+'OTHER/MIN/OTHER_de_novo', '.pdb', 'OTHER') ## merge  chains
     g_var.tc['f_o_t']=time.time()
 
     #### converts non protein residues into atomistic (runs on all cores)
@@ -139,12 +141,12 @@ if __name__ == '__main__':
         #### attempts to minimise all residues at once 
         print('\nThis may take some time....(probably time for a coffee)\n')
         for residue_type in [key for key in g_var.cg_residues if key not in ['PROTEIN', 'OTHER', 'RNA']]:
-            if not os.path.exists(g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb'):
-                print('Minimising: '+residue_type) 
-                error = gro.minimise_merged(residue_type, g_var.working_dir+residue_type+'/'+residue_type+'_all.pdb')
-                if error == True and residue_type not in ['SOL']:
-                    print('Failed to minimise as a group: '+residue_type)
-                    print('please check your input file as there is likely something wrong')
+            # if not os.path.exists(g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb'):
+            print('Minimising: '+residue_type) 
+            error = gro.minimise_merged(residue_type, g_var.working_dir+residue_type+'/'+residue_type+'_all.pdb')
+            if error == True and residue_type not in ['SOL']:
+                print('Failed to minimise as a group: '+residue_type)
+                print('please check your input file as there is likely something wrong')
  
     ### MERGES system
     g_var.tc['n_p_t']=time.time()
@@ -160,17 +162,18 @@ if __name__ == '__main__':
                gen.file_copy_and_check(g_var.merged_directory+file_name, g_var.final_dir+file_name)
 
     #### merges provided atomistic protein and residues types into a single pdb file into merged directory
-    if not os.path.exists(g_var.merged_directory+'merged_cg2at_de_novo.pdb'):
-        at_mod.merge_system_pdbs('_de_novo') ## merge all minimised residues into a complete system 
+    # if not os.path.exists(g_var.merged_directory+'merged_cg2at_de_novo.pdb'):
+    at_mod.merge_system_pdbs('_de_novo') ## merge all minimised residues into a complete system 
 
     ## minimise merged system
-    if not os.path.exists(g_var.merged_directory+'MIN/merged_cg2at_de_novo_minimised.pdb'):
-        gro.make_min('merged_cg2at') 
-        gro.minimise_merged_pdbs( '_de_novo') ## minimise system pdb
+    # if not os.path.exists(g_var.merged_directory+'MIN/merged_cg2at_de_novo_minimised.pdb'):
+    os.chdir(g_var.merged_directory)
+    gro.make_min('merged_cg2at') 
+    gro.minimise_merged_pdbs( '_de_novo') ## minimise system pdb
     g_var.tc['m_t']=time.time()
     ## checks for threaded lipids, e.g. abnormal bonds lengths (not had a issue for a long time might delete) 
-    if not os.path.exists(g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb'):
-        at_mod.check_ringed_lipids(g_var.merged_directory+'MIN/merged_cg2at_de_novo_minimised.pdb') ## check for abnormal bond lengths 
+    # if not os.path.exists(g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb'):
+    at_mod.check_ringed_lipids(g_var.merged_directory+'MIN/merged_cg2at_de_novo_minimised.pdb') ## check for abnormal bond lengths 
     ## runs short NVT on de_novo system with disres on if available 
     if g_var.args.o not in ['none', 'align']:
         gro.run_nvt(g_var.merged_directory+'checked_ringed_lipid_de_novo') ## run npt on system 

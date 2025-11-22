@@ -209,8 +209,11 @@ def calculate_distance(p1, p2):
     return np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)+((p1[2]-p2[2])**2))
 
 def file_copy_and_check(file_in,file_out):
-    if not os.path.exists(file_out) and os.path.exists(file_in):
+    # if not os.path.exists(file_out) and os.path.exists(file_in):
+    if os.path.exists(file_in):
         copyfile(file_in, file_out)
+    else:
+        raise Exception('Cannot find file: '+file_in)
 
 def folder_copy_and_check(folder_in,folder_out):
     if not os.path.exists(folder_out):
@@ -218,8 +221,7 @@ def folder_copy_and_check(folder_in,folder_out):
 
 def flags_used():
     print('\nAll variables supplied have been saved in : \n'+g_var.input_directory+'script_inputs.dat')
-    os.chdir(g_var.input_directory)
-    with open('script_inputs.dat', 'w') as scr_input:
+    with open(os.path.join(g_var.input_directory, 'script_inputs.dat'), 'w') as scr_input:
         scr_input.write('\n'+g_var.opt['input']+'\n')
         for var in g_var.opt:
             if var != 'input':
@@ -470,7 +472,6 @@ def fetch_fragment_multi():
                 if residue not in g_var.res_top:
                     location = fragment_location(residue)
                     grouped_atoms = get_fragment_topology(residue, location)
-                    print(residue)
                     g_var.hydrogen[residue], g_var.heavy_bond[residue], residue_list, at_mass, amide_h = fetch_bond_info(residue, amino_acid_itp, g_var.at_mass, location)
                     
                     g_var.sorted_connect[residue]  = sort_connectivity(grouped_atoms, g_var.heavy_bond[residue])
@@ -969,25 +970,55 @@ def print_script_timings():
                 print(line)
         print('\nAll script timings have been saved in: \n'+g_var.final_dir+'script_timings.dat\n')
 
-def cg2at_header():
-    print('\n{0:^90}\n'.format('CG2AT2 is a fragment based conversion of coarsegrain to atomistic.'))
-    print('{0:^90}\n'.format('CG2AT2 version: '+str(g_var.version)))
+def header():
     print('{0:^90}\n'.format('Last updated : '+str(g_var.script_update)))
-    print('{0:^90}'.format('CG2AT2 is written by Owen Vickery'))
-    print('{0:^90}'.format('Project leader Phillip Stansfeld'))
-    print('\n{0:^90}\n{1:^90}'.format('Contact email address:','cg2at2@gmail.com'))
-    print('\n{0:^90}\n{1:^90}\n{2:^90}\n{3:-<90}'.format('Address:','School of Life Sciences, University of Warwick,','Gibbet Hill Road, Coventry, CV4 7AL, UK', ''))
-    print('{0:^90}'.format('Please email me any new residues for the database!'))
-    print('\n{0:^90}\n{1:^90}'.format('If you are using this script please acknowledge me (Dr Owen Vickery)','and cite the following:'))    
-    print('\n{0:^90}\n{1:^90}\n{2:^90}\n{3:^90}\n{4:^90}\n{5:^90}'.format('CG2AT2: an Enhanced Fragment-Based Approach for ','Serial Multi-scale Molecular Dynamics Simulations',\
-        'Owen N. Vickery and Phillip J. Stansfeld','Journal of Chemical Theory and Computation','2021 17 (10), 6472-6482','DOI: 10.1021/acs.jctc.1c00295'))
+    print('\n{0:^90}\n{1:^90}'.format(
+        'If you are using this script, please cite the following:',
+        '(This script integrates both Backward and CG2AT2 workflows)'
+    ))
+
+    # Backward reference
+    print('\n{0:^90}\n{1:^90}\n{2:^90}\n{3:^90}\n{4:^90}\n{5:^90}'.format(
+        'Going Backward: A Flexible Geometric Approach to',
+        'Reverse Transformation from Coarse Grained to Atomistic Models',
+        'Tsjerk A. Wassenaar, Kristyna Pluhackova, Rainer A. Böckmann,',
+        'Siewert J. Marrink, and D. Peter Tieleman',
+        'Journal of Chemical Theory and Computation (2014) 10, 676–690',
+        'DOI: 10.1021/ct400617g'
+    ))
+
+    # CG2AT2 reference
+    print('\n{0:^90}\n{1:^90}\n{2:^90}\n{3:^90}\n{4:^90}\n{5:^90}'.format(
+        'CG2AT2: an Enhanced Fragment-Based Approach for',
+        'Serial Multi-scale Molecular Dynamics Simulations',
+        'Owen N. Vickery and Phillip J. Stansfeld',
+        'Journal of Chemical Theory and Computation (2021) 17 (10), 6472–6482',
+        'DOI: 10.1021/acs.jctc.1c00295',
+        ''
+    ))
     print('\n{0:-<90}\n{1:^90}'.format('', 'File locations'))
     print('\n{0:^90}'.format('Executable: '+g_var.opt['input'].split()[0]))
     print('{0:^90}'.format('Database locations: '+g_var.database_dir))
     print('{0:^90}\n\n{1:-<90}'.format('Script locations: '+g_var.scripts_dir, ''))
 
+# def cg2at_header():
+#     print('\n{0:^90}\n'.format('CG2AT2 is a fragment based conversion of coarsegrain to atomistic.'))
+#     print('{0:^90}\n'.format('CG2AT2 version: '+str(g_var.version)))
+#     print('{0:^90}\n'.format('Last updated : '+str(g_var.script_update)))
+#     print('{0:^90}'.format('CG2AT2 is written by Owen Vickery'))
+#     print('{0:^90}'.format('Project leader Phillip Stansfeld'))
+#     print('\n{0:^90}\n{1:^90}'.format('Contact email address:','cg2at2@gmail.com'))
+#     print('\n{0:^90}\n{1:^90}\n{2:^90}\n{3:-<90}'.format('Address:','School of Life Sciences, University of Warwick,','Gibbet Hill Road, Coventry, CV4 7AL, UK', ''))
+#     print('{0:^90}'.format('Please email me any new residues for the database!'))
+#     print('\n{0:^90}\n{1:^90}'.format('If you are using this script please acknowledge me (Dr Owen Vickery)','and cite the following:'))    
+#     print('\n{0:^90}\n{1:^90}\n{2:^90}\n{3:^90}\n{4:^90}\n{5:^90}'.format('CG2AT2: an Enhanced Fragment-Based Approach for ','Serial Multi-scale Molecular Dynamics Simulations',\
+#         'Owen N. Vickery and Phillip J. Stansfeld','Journal of Chemical Theory and Computation','2021 17 (10), 6472-6482','DOI: 10.1021/acs.jctc.1c00295'))
+#     print('\n{0:-<90}\n{1:^90}'.format('', 'File locations'))
+#     print('\n{0:^90}'.format('Executable: '+g_var.opt['input'].split()[0]))
+#     print('{0:^90}'.format('Database locations: '+g_var.database_dir))
+#     print('{0:^90}\n\n{1:-<90}'.format('Script locations: '+g_var.scripts_dir, ''))
+
 def database_information():
-    
     to_print = '\n{0:^90}\n{1:-<90}\n\n'.format('The available forcefields within your database are (flag -ff):', '')
     for forcefields in g_var.forcefield_available:
         to_print += '{0:^90}\n'.format(forcefields)

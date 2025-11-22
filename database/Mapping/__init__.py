@@ -660,6 +660,5 @@ mapping = _init()
 def get(target="gromos",source="martini"): 
     D = dict([(i[0],mapping[i]) for i in mapping.keys() if i[1] == source and i[2] == target])
     print("Residues defined for transformation from %s to %s:"%(source,target))
-    print(D.keys())
     return D
 
