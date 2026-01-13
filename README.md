@@ -5,8 +5,17 @@
 This repository provides a workflow that integrates both Backward and CG2AT2 backmapping methods, enabling the conversion of Martini coarse-grained models to all-atom structures for protein–nucleic acid systems.
 [CG2AT2](https://github.com/owenvickery/cg2at.git) is a fragment-based approach used for backmapping proteins and DNA chains. Since fragment libraries for RNA are not available, RNA chains are backmapped using the geometric-based [Backward](https://github.com/Tsjerk/Backward.git) protocol.
 
-## Install
-The environment setup is identical to that of [CG2AT2](https://github.com/owenvickery/cg2at.git).
+## Installation
+
+Software:
+
+- Python v3 or higher
+- GROMACS > v5
+
+Non standard python modules:
+
+- Numpy
+- Scipy
 
 
 ## Usage
@@ -17,7 +26,9 @@ We use the arm domain of the yeast spliceosomal U4/U6·U5 tri-snRNP (PDB ID: 5GA
 ### (Optional) Setting the Simulation Box
 To prevent issues caused by missing box information or a box that is too small, we first regenerate the box using:
 
-`gmx_mpi editconf -f $input.pdb -o $output_box.pdb -d 1.0 -bt cubic`
+`{GMX} editconf -f $input.pdb -o $output_box.pdb -d 1.0 -bt cubic`
+
+where ${GMX} should be replaced by your path to gmx / gmx_mpi.
 
 ### Backmapping to All-Atom Structure:
 `python ../database/bin/cg2at_backward.py -c $output_box.pdb -w tip3p 
