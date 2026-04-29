@@ -67,7 +67,7 @@ if __name__ == "g_var" and 'start_dir' not in locals():
 
     ### CG2AT folder locations
 
-    # start_dir       = os.getcwd()+'/'  ### initial working directory
+    start_dir       = os.getcwd()+'/'  ### initial working directory
     # working_dir     = os.getcwd()+'/'+args.loc+'/'   ### working directory 
     # final_dir       = os.getcwd()+'/'+args.loc+'/FINAL/'  ### final directory for run files
     # input_directory = os.getcwd()+'/'+args.loc+'/INPUT/'  ### contains input run files
