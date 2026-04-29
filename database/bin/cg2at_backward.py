@@ -74,6 +74,9 @@ if __name__ == '__main__':
         g_var.coord_atomistic = at_mod_p.build_multi_residue_atomistic_system(g_var.cg_residues, 'PROTEIN') ## converts protein to atomistic
         if not g_var.user_at_input and g_var.args.v >= 1:  ## prints protein sequences 
             print(gen.print_sequnce_info('PROTEIN'))
+        ## load disulfide bonds from reference PDB when -ss is provided (no alignment, no steered MD)
+        if g_var.args.ss is not None:
+            at_mod_p.load_disulfide_from_reference()
         ## reads in user chain, runs a sequence alignment and finds existing disulphide bonds
         g_var.tc['p_d_n_t']=time.time()
         if g_var.user_at_input:

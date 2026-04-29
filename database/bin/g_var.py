@@ -30,6 +30,7 @@ if __name__ == "g_var" and 'start_dir' not in locals():
     parser.add_argument('-gmx', help='gromacs executable name (Optional)',metavar='gmx_avx',type=str)
     parser.add_argument('-cys', help='cutoff for disulphide bonds, sometimes CYS are too far apart (Optional)',metavar='7',type=float, default=7)
     parser.add_argument('-silent', help='silent cysteines question', action='store_true')
+    parser.add_argument('-ss', help='reference PDB for disulfide bond assignment only (no alignment, no steered MD). Extracts CYS pairs with SG-SG < 2.3 A and enforces them during backmapping.', metavar='ref.pdb', type=str)
     parser.add_argument('-box', help='box size in Angstrom (0 = use input file) (Optional)',metavar='100',type=float, nargs=3)
     parser.add_argument('-vs', help='use virtual sites', action='store_true')
     parser.add_argument('-sf', help='scale factor for fragments, shrinks fragments before fitting to CG',metavar='0.9',type=float, default=0.9)

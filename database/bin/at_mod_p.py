@@ -79,8 +79,120 @@ def ask_if_disulphide(chain, res_1, res_2):
         except BaseException:
             print("Oops!  That was a invalid choice")
 
+def load_disulfide_from_reference():
+    """
+    Read a reference PDB (-ss flag) to extract disulfide bonds without triggering
+    chain alignment, Kabsch rotation, or steered MD.  Populates g_var.user_cys_bond
+    and sets g_var.skip_disul so that CG-based detection is skipped entirely.
+    """
+    pdb_path = g_var.args.ss
+    if not os.path.exists(pdb_path):
+        print('[WARN] -ss reference file not found: ' + pdb_path)
+        return
+
+    _print = lambda msg: print('[ss] ' + msg)
+
+    chains_sg = {}
+    with open(pdb_path) as f:
+        for line in f:
+            if not line.startswith('ATOM'):
+                continue
+            if line[17:20].strip() != 'CYS':
+                continue
+            atom_name = line[12:16].strip()
+            if 'S' not in atom_name.upper():
+                continue
+            chain = line[21]
+            resid = int(line[22:26])
+            x, y, z = float(line[30:38]), float(line[38:46]), float(line[46:54])
+            chains_sg.setdefault(chain, {}).setdefault(resid, []).append((x, y, z, atom_name))
+
+    if not chains_sg:
+        _print('No CYS SG atoms found in reference')
+        return
+
+    ref_bonds = {}
+    for chain, sgs in chains_sg.items():
+        coords = [(resid, pts[0][0], pts[0][1], pts[0][2]) for resid, pts in sgs.items() if pts]
+        if len(coords) < 2:
+            continue
+        resids = [c[0] for c in coords]
+        xyz = np.array([c[1:] for c in coords])
+        tree = cKDTree(xyz)
+        done = set()
+        ref_bonds[chain] = []
+        for i, coord_i in enumerate(xyz):
+            query = tree.query_ball_point(coord_i, r=2.3)
+            for j in query:
+                if j != i and (i, j) not in done and (j, i) not in done:
+                    ref_bonds[chain].append((resids[i], resids[j]))
+                    done.add((i, j))
+        _print('Chain %s: %d disulfide pairs from reference' % (chain, len(ref_bonds[chain])))
+        for r1, r2 in ref_bonds[chain]:
+            _print('  CYS%d - CYS%d (SG-SG via KDTree r=2.3)' % (r1, r2))
+
+    if not ref_bonds:
+        _print('No disulfide bonds found in reference (no CYS pair with SG < 2.3 A)')
+        return
+
+    ref_chains = sorted(ref_bonds.keys())
+    cg_chains = list(range(g_var.system.get('PROTEIN', 0)))
+
+    if len(cg_chains) != len(ref_chains):
+        _print('CG has %d chains but reference has %d – mapping by sorted order' % (len(cg_chains), len(ref_chains)))
+
+    for idx, cg_chain in enumerate(cg_chains):
+        ref_chain = ref_chains[idx % len(ref_chains)]
+
+        cg_cys_resids = {}
+        for resid, residue in g_var.coord_atomistic[cg_chain].items():
+            atom = next(iter(residue))
+            if residue[atom].get('res_type') == 'CYS':
+                for a in residue:
+                    if 'S' in residue[a].get('atom', '').upper():
+                        cg_cys_resids[resid] = residue[a]['coord']
+
+        cg_cys_sorted = sorted(cg_cys_resids.keys())
+        ref_cys_involved = sorted(set(r for pair in ref_bonds[ref_chain] for r in pair))
+
+        if len(ref_cys_involved) != len(cg_cys_sorted):
+            _print('Chain %d: %d CYS in CG, %d in reference – falling back to direct residue-number match' %
+                   (cg_chain, len(cg_cys_sorted), len(ref_cys_involved)))
+
+        resid_map = {}
+        if ref_cys_involved == cg_cys_sorted:
+            resid_map = {r: r for r in ref_cys_involved}
+            _print('Chain %d: residue numbers match directly' % cg_chain)
+        else:
+            for r_ref in ref_cys_involved:
+                if r_ref in cg_cys_sorted:
+                    resid_map[r_ref] = r_ref
+            unmatched = [r for r in ref_cys_involved if r not in resid_map]
+            if unmatched:
+                _print('Chain %d: mapping %d reference CYS by index order (direct match failed for %d)' %
+                       (cg_chain, len(unmatched), len(unmatched)))
+                unmatched_cg = [r for r in cg_cys_sorted if r not in resid_map.values()]
+                for r_ref, r_cg in zip(sorted(unmatched), sorted(unmatched_cg)):
+                    resid_map[r_ref] = r_cg
+
+        offset = next(iter(g_var.coord_atomistic[cg_chain]))
+        g_var.user_cys_bond[cg_chain] = []
+        for r1, r2 in ref_bonds[ref_chain]:
+            cr1, cr2 = resid_map.get(r1), resid_map.get(r2)
+            if cr1 is not None and cr2 is not None:
+                g_var.user_cys_bond[cg_chain].append([cr1 - offset, cr2 - offset])
+
+        g_var.skip_disul[cg_chain] = True
+
+    total = sum(len(v) for v in g_var.user_cys_bond.values())
+    _print('Loaded %d total disulfide bonds from reference (alignment bypassed)' % total)
+
+
 def find_disulphide_bonds_user_sup():
     for chain in g_var.atomistic_protein_input_aligned:
+        if g_var.skip_disul.get(chain):
+            _print('Chain %d: disulfide bonds already loaded from reference, skipping alignment-based detection' % chain)
+            continue
         g_var.user_cys_bond[chain]=[]
         cysteines = []
         cys_resid = []
